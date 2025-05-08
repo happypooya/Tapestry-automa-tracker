@@ -12,19 +12,52 @@
             margin: 0; /* Remove default margin */
             padding: 0; /* Remove default padding */
             overflow-y: auto; /* Ensure both html and body are scrollable */
+            position: relative; /* Needed for the ::before pseudo-element */
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0e4d3; /* Light parchment background */
             color: #333;
             min-height: 100vh; /* Ensure body has a minimum height for scrolling */
+            /* Remove background image and filter from body */
+            background-image: none;
+            filter: none;
+            -webkit-filter: none;
         }
+
+        /* Pseudo-element for the blurred background image (Main App Background) */
+        body::before {
+            content: '';
+            position: fixed; /* Fix it to the viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Set the background image here using the *previous* provided URL for the main app */
+            background-image: url('https://cf.geekdo-images.com/CdvEboFCixBAMi9HYOS83g__imagepagezoom/img/34mgZz2a9OX4JMEF4TdHel8eRZw=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic6221971.jpg');
+            background-size: cover; /* Cover the entire background */
+            background-position: center; /* Center the background image */
+            background-attachment: fixed; /* Keep the background fixed while scrolling */
+            /* Apply the blur filter to the pseudo-element */
+            filter: blur(2px); /* Adjust the pixel value for more or less blur */
+            -webkit-filter: blur(2px); /* For Safari */
+            z-index: -1; /* Send it behind all content */
+        }
+
 
         /* Add a class to body to disable scrolling when modal is open */
         body.modal-open {
             overflow: hidden;
         }
+
+        /* Style for the main content container to ensure it's above the blurred background */
+         #app > .container {
+             position: relative; /* Ensure positioning context for z-index */
+             z-index: 1; /* Place it above the blurred background (z-index: -1) */
+             /* No filter needed here anymore */
+             filter: none;
+             -webkit-filter: none;
+         }
 
 
         .container {
@@ -37,6 +70,18 @@
             overflow-y: visible;
             overflow-x: hidden; /* Prevent horizontal overflow from tracks */
         }
+
+        /* Style for the main title to make it visible through the background */
+        h1 {
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background for readability */
+            padding: 0.5rem 1rem; /* Add some padding around the text */
+            border-radius: 8px; /* Rounded corners for the background */
+            display: inline-block; /* Make the background wrap the text */
+            margin-bottom: 1.5rem; /* Keep existing margin below */
+            position: relative; /* Ensure positioning context */
+            z-index: 2; /* Ensure it's above the blurred background and container's base level */
+         }
+
 
          .track-space {
             position: relative; /* Needed for tooltip positioning */
@@ -523,6 +568,7 @@
             left: 0;
             right: 0;
             bottom: 0;
+            /* Background image for setup screen - Using the provided URL */
             background-image: url('https://canada.stonemaiergames.com/cdn/shop/products/A05I6187-PhotographyByTimChuon.jpg?v=1722592311');
             background-size: cover;
             background-position: center;
@@ -1094,7 +1140,8 @@
 
 
         // Calculate Automa's next move based on priority rules and character
-        const calculateAutomaMove = (currentState, availablePerms, selectedCharacter) => {
+        // Added availablePerms as a parameter
+        const calculateAutomaMove = (currentState, availablePerms, selectedCharacter) => { // Added availablePerms parameter
             console.log("--- Calculating Automa Move ---");
             console.log("Current State:", {
                 automaPositions: currentState.automaPositions,
@@ -1460,7 +1507,8 @@
                  console.log("Drawing a new permutation...");
                  // Draw and potentially reorder a new permutation based on character
                  // Pass gameState to drawNewPermutation for Strategic and Revengeful logic
-                 let newPermutation = drawNewPermutation(availablePermutations, selectedCharacter, tracksData, currentState); // Pass currentState
+                 // FIX: Pass the availablePerms parameter to drawNewPermutation
+                 let newPermutation = drawNewPermutation(availablePerms, selectedCharacter, tracksData, currentState); // Pass currentState
                  permutationToUse = newPermutation;
                  // Note: The state update for availablePermutations happens outside this function
                  console.log("New permutation drawn:", permutationToUse);
@@ -1565,8 +1613,9 @@
                     {/* Track Title and Advance Buttons */}
                     <div className="flex items-center justify-between mb-2"> {/* Use flex to align title and buttons */}
                          <h3 className="text-lg font-semibold">{name} Track</h3>
-                         {/* Buttons to advance player/automa 1 space */}
-                         <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2"> {/* Stack vertically on small screens, horizontally on medium+ */}
+                         {/* Buttons to advance player/automa 1 space - Hidden on mobile, visible on md and up */}
+                         {/* Added 'hidden md:flex' classes */}
+                         <div className="hidden md:flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2"> {/* Stack vertically on small screens, horizontally on medium+ */}
                               <button
                                   className="px-2 py-1 rounded font-bold bg-green-500 hover:bg-green-700 text-white text-xs disabled:bg-gray-400 disabled:cursor-not-allowed" // Smaller size and text
                                   onClick={() => onAdvancePlayerOneSpace(name)} // Use passed handler
@@ -1646,7 +1695,7 @@
 
 
         // Automa Panel Component (defined outside App as it's a presentational component)
-        const AutomaPanel = ({ buildings, automaLandmarks, automaColor, onAutomaColorChange, automaTurnMessage, tiebreakerTrack, onAdjustBuildings, onAdjustResources, automaCharacter, onAutomaCharacterChange, onAdjustPositions, isSetupComplete }) => { // Added isSetupComplete prop
+        const AutomaPanel = ({ buildings, automaLandmarks, automaColor, onAutomaColorChange, automaTurnMessage, tiebreakerTrack, onAdjustBuildings, onAdjustResources, automaCharacter, onAutomaCharacterChange, onAdjustPositions, isSetupComplete, automaResources }) => { // Added automaResources prop
 
             // Determine Automa panel color classes
             const automaPanelColorClass = automaColor ? `automa-${automaColor.toLowerCase().replace(' ', '-')}` : 'automa-red'; // Default to red
@@ -1719,6 +1768,12 @@
                           >
                               Adjust Positions
                           </button>
+                     </div>
+
+                     {/* Automa Resources Display */}
+                     <div className="mb-4">
+                         <span className="font-semibold">Resources:</span>
+                         <span className="ml-2 text-lg font-bold">{automaResources}</span> {/* Display resources */}
                      </div>
 
 
@@ -1981,7 +2036,7 @@
                 Military: 0,
                 Arts: 0,
             },
-            automaResources: 0,
+            automaResources: 4, // Automa starts with 4 resources
             automaBuildings: {
                  Market: 0,
                  House: 0,
@@ -2059,6 +2114,7 @@
         const handleAutomaTurn = () => {
             setMessage('Calculating Automa turn...');
             // Pass current state, availablePermutations, and selected character to calculation
+            // Pass availablePermutations from the state
             const move = calculateAutomaMove(gameState, availablePermutations, gameState.automaCharacter);
 
             // Create a deep copy of the current state for modification
@@ -2126,6 +2182,7 @@
                      // Remove the used permutation from availablePermutations state
                      // Only remove if a permutation was actually used (i.e., not the special logic)
                      if (permutation !== null) {
+                          // FIX: Use the availablePermutations state variable directly here
                           const usedPermutationIndex = availablePermutations.findIndex(p => JSON.stringify(p) === JSON.stringify(permutation));
                           if (usedPermutationIndex !== -1) {
                                const newAvailablePermutations = availablePermutations.filter((_, index) => index !== usedPermutationIndex);
@@ -2149,20 +2206,19 @@
 
                 // Check for building gain (gain building logic applies to the *new* space)
                 const spaceData = tracksData[track].spacesData.find(s => s.number === newPos);
+                let buildingGainMessage = '';
                 if (spaceData && spaceData.benefitDetails) {
-                     if (spaceData.benefitDetails.gainBuilding) {
-                         const buildingType = spaceData.benefitDetails.gainBuilding;
-                         newState.automaBuildings[buildingType] = Math.min(5, newState.automaBuildings[buildingType] + 1); // Cap at 5
-                         // Append building gain to the message
-                         newState.automaTurnMessage += ` Automa gained 1 ${buildingType}.`;
-                     } else if (spaceData.benefitDetails.gainBuildingChoice) {
-                          // Automa picks the first option in the choice array
-                          const buildingType = spaceData.benefitDetails.gainBuildingChoice[0];
-                          newState.automaBuildings[buildingType] = Math.min(5, newState.automaBuildings[buildingType] + 1); // Cap at 5
-                           // Append building gain to the message
-                          newState.automaTurnMessage += ` Automa gained 1 ${buildingType} (from choice).`;
-                       }
-                  }
+                   if (spaceData.benefitDetails.gainBuilding) {
+                       const buildingType = spaceData.benefitDetails.gainBuilding;
+                       newState.automaBuildings[buildingType] = Math.min(5, newState.automaBuildings[buildingType] + 1); // Cap at 5
+                       buildingGainMessage = ` Automa gained 1 ${buildingType}.`;
+                   } else if (spaceData.benefitDetails.gainBuildingChoice) {
+                        // Automa picks the first option in the choice array
+                        const buildingType = spaceData.benefitDetails.gainBuildingChoice[0];
+                        newState.automaBuildings[buildingType] = Math.min(5, newState.automaBuildings[buildingType] + 1); // Cap at 5
+                        buildingGainMessage = ` Automa gained 1 ${buildingType} (from choice).`;
+                     }
+                }
 
                 // Add Advance action to history
                 newState.automaHistory.push({
@@ -2816,6 +2872,7 @@
                              automaTurnMessage={gameState.automaTurnMessage}
                              tiebreakerTrack={gameState.currentTiebreakerTrack}
                              isSetupComplete={gameState.isSetupComplete}
+                             automaResources={gameState.automaResources} /* Pass automaResources */
                          />
 
                          {/* Button Group 1: Under Automa Panel */}
@@ -2829,7 +2886,7 @@
                               <button
                                   className="player-income-button"
                                   onClick={handlePlayerIncome}
-                              >
+                                  >
                                   Player Income
                               </button>
                               <button
@@ -2874,7 +2931,7 @@
                                                  <li key={index} className="mb-2">
                                                      <span className="font-semibold">Turn {entry.turn} ({entry.player}):</span> {entry.details}
                                                  </li>
-                                             ))}
+                                              ))}
                                          </ul>
                                      ) : (
                                          <p>No turns recorded yet.</p>
@@ -2961,9 +3018,9 @@
                                   className={`undo-button`}
                                   onClick={handleUndo}
                                   disabled={historyIndex <= 0}
-                              >
+                                  >
                                   Undo
-                              </button>
+                                  </button>
                               <button
                                   className={`redo-button`}
                                   onClick={handleRedo}
