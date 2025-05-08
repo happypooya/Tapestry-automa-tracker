@@ -848,7 +848,7 @@
                                   <option value="Aggressive">Aggressive</option>
                                   <option value="Strategic">Strategic</option>
                                   <option value="Peaceful">Peaceful</option>
-                                  <option value="Revengful">Revengful</option>
+                                  <option value="Revengeful">Revengeful</option> {/* Corrected spelling */}
                               </select>
                           </div>
 
@@ -1227,7 +1227,7 @@
                      if (!aHasLandmark && bHasLandmark) return 1; // b comes first
                      return 0; // maintain original order if both/neither have landmarks
                  });
-             } else if (selectedCharacter === 'Revengful') {
+             } else if (selectedCharacter === 'Revengeful') { // Corrected spelling
                  // Prioritize tracks where player is ahead, then tracks with player-claimed landmarks
                  permutation.sort((a, b) => {
                       const aPlayerAhead = gameState.playerPositions[a] > gameState.automaPositions[a]; // Use gameState parameter
@@ -1663,7 +1663,7 @@
                          }
                         break;
 
-                    case 'Revengful':
+                    case 'Revengeful': // Corrected spelling
                         // Revengful Automa Logic (Rules 9, 10, 1, 2, 3, 4, 5)
                         const revengfulPriorityOrder = [
                              { rule: 9, check: (track) => isAffordableAndMeetsRule(track, 9) }, // Revengful Rule 1: Player Ahead
@@ -1733,7 +1733,7 @@
                 if (!permutationToUse || !isCurrentPermutationValidForCandidates || isDirectAdvance) {
                      console.log("Drawing a new permutation...");
                      // Draw and potentially reorder a new permutation based on character
-                     // Pass gameState to drawNewPermutation for Strategic and Revengful logic
+                     // Pass gameState to drawNewPermutation for Strategic and Revengeful logic
                      let newPermutation = drawNewPermutation(availablePerms, selectedCharacter, tracksData, currentState); // Pass currentState
                      permutationToUse = newPermutation;
                      // Note: The state update for availablePermutations happens outside this function
