@@ -33,7 +33,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* Set the background image here using the *previous* provided URL for the main app */
+            /* Set the background image here using the previous provided URL for the main app */
             background-image: url('https://cf.geekdo-images.com/CdvEboFCixBAMi9HYOS83g__imagepagezoom/img/34mgZz2a9OX4JMEF4TdHel8eRZw=/fit-in/1200x900/filters:no_upscale():strip_icc()/pic6221971.jpg');
             background-size: cover; /* Cover the entire background */
             background-position: center; /* Center the background image */
@@ -708,6 +708,24 @@
              box-shadow: none; /* Prevent hover shadow when disabled */
          }
 
+        /* Style for the temporary notification message */
+        .notification-message {
+            position: fixed; /* Fixed position */
+            bottom: 20px; /* 20px from the bottom */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust to truly center */
+            background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent background */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 100; /* Ensure it's above most other elements */
+            opacity: 1; /* Start fully visible */
+            transition: opacity 0.5s ease-in-out; /* Smooth fade out */
+            pointer-events: none; /* Allow clicks to pass through */
+             text-align: center; /* Center the text */
+             max-width: 80%; /* Limit width on smaller screens */
+        }
+
 
     </style>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -985,56 +1003,59 @@
              }
              const costToAdvance = tracksData[trackName].cost(nextSpace);
 
+             if (resources < costToAdvance) {
+                 return false; // Not affordable
+             }
+
              // Rule 1: Advance on a Tier IV space (spaces 10, 11, 12)
              if (rule === 1) {
-                 return nextSpace >= 10 && nextSpace <= 12 && resources >= costToAdvance;
+                 return nextSpace >= 10 && nextSpace <= 12;
              }
              // Rule 2: Automa is tied with the player
              if (rule === 2) {
-                 return automaPos[trackName] === playerPos[trackName] && resources >= costToAdvance;
+                 return automaPos[trackName] === playerPos[trackName];
              }
              // Rule 3: Automa is 1 space away from a landmark it hasn't claimed
              if (rule === 3) {
                  const trackLandmarks = tracksData[trackName].landmarks;
                  return trackLandmarks.some(landmark =>
-                     landmark.space === nextSpace && landmarksState[`${trackName}-${landmark.space}`]?.status === 'available' && resources >= costToAdvance
+                     landmark.space === nextSpace && landmarksState[`${trackName}-${landmark.space}`]?.status === 'available'
                  );
              }
              // Rule 4: Any affordable advance (space > 0)
              if (rule === 4) {
-                 return nextSpace > 0 && resources >= costToAdvance;
+                 return nextSpace > 0;
              }
              // Rule 5: Advance from space 0 (must be on space 0 currently)
              if (rule === 5) {
-                 return automaPos[trackName] === 0 && nextSpace === 1 && resources >= costToAdvance;
+                 return automaPos[trackName] === 0 && nextSpace === 1;
              }
              // Rule 6 (Aggressive): Automa is ahead of the player
              if (rule === 6) {
-                 return automaPos[trackName] > playerPos[trackName] && resources >= costToAdvance;
+                 return automaPos[trackName] > playerPos[trackName];
              }
              // Rule 7 (Strategic): Advance to an available landmark space
              if (rule === 7) {
                  const trackLandmarks = tracksData[trackName].landmarks;
                  return trackLandmarks.some(landmark =>
-                     landmark.space === nextSpace && landmarksState[`${trackName}-${landmark.space}`]?.status === 'available' && resources >= costToAdvance
+                     landmark.space === nextSpace && landmarksState[`${trackName}-${landmark.space}`]?.status === 'available'
                  );
              }
              // Rule 8 (Peaceful): Advance on a track that provides a building (non-military)
              if (rule === 8) {
                  const spaceData = tracksData[trackName].spacesData.find(s => s.number === nextSpace);
-                 return trackName !== 'Military' && spaceData?.benefitDetails?.gainBuilding && resources >= costToAdvance;
+                 return trackName !== 'Military' && spaceData?.benefitDetails?.gainBuilding;
              }
               // Rule 9 (Revengeful): Player is ahead of Automa
              if (rule === 9) {
-                 return playerPos[trackName] > automaPos[trackName] && resources >= costToAdvance;
+                 return playerPos[trackName] > automaPos[trackName];
              }
              // Rule 10 (Revengeful): Player has claimed a landmark on this track that Automa hasn't
              if (rule === 10) {
                  const trackLandmarks = tracksData[trackName].landmarks;
                  return trackLandmarks.some(landmark =>
                      landmark.space <= automaPos[trackName] && // Check landmarks Automa has passed or is on
-                     landmarksState[`${trackName}-${landmark.space}`]?.status === 'player' && // Player claimed it
-                     resources >= costToAdvance // Still needs to be affordable to advance
+                     landmarksState[`${trackName}-${landmark.space}`]?.status === 'player' // Player claimed it
                  );
              }
 
@@ -1043,9 +1064,11 @@
          };
 
          // Helper function to check if a track meets a specific priority rule and is affordable, excluding space 0 unless the rule is 5
+         // FIX: Added resources parameter to this function
          const meetsPriorityRuleAndAffordableAboveZero = (automaPos, playerPos, trackName, rule, landmarksState, resources, tracksData) => {
              // If the rule is 5 (from space 0), use the standard check
              if (rule === 5) {
+                 // FIX: Pass resources to the inner call
                  return meetsPriorityRuleAndAffordable(automaPos, playerPos, trackName, rule, landmarksState, resources, tracksData);
              }
              // For all other rules, check if the next space is > 0
@@ -1053,6 +1076,7 @@
              if (nextSpace <= 0) {
                  return false;
              }
+             // FIX: Pass resources to the inner call
              return meetsPriorityRuleAndAffordable(automaPos, playerPos, trackName, rule, landmarksState, resources, tracksData);
          };
 
@@ -1141,7 +1165,7 @@
 
         // Calculate Automa's next move based on priority rules and character
         // Added availablePerms as a parameter
-        const calculateAutomaMove = (currentState, availablePerms, selectedCharacter) => { // Added availablePerms parameter
+        const calculateAutomaMove = (currentState, availablePerms, selectedCharacter) => {
             console.log("--- Calculating Automa Move ---");
             console.log("Current State:", {
                 automaPositions: currentState.automaPositions,
@@ -1186,6 +1210,7 @@
                      return false; // Not affordable
                  }
                  // Check if it meets the specific rule
+                 // FIX: Pass currentResources to meetsPriorityRuleAndAffordable
                  return meetsPriorityRuleAndAffordable(currentAutomaPos, currentPlayerPos, trackName, rule, landmarksState, currentResources, tracksData);
             };
 
@@ -1320,6 +1345,7 @@
                     const normalPriorityOrder = [1, 2, 3]; // Tier IV, Tied, Landmark Approaching
                     for (const priority of normalPriorityOrder) {
                          let tracksMeetingThisPriority = tracks.filter(trackName =>
+                             // FIX: Pass currentResources to meetsPriorityRuleAndAffordableAboveZero
                              meetsPriorityRuleAndAffordableAboveZero(currentAutomaPos, currentPlayerPos, trackName, priority, landmarksState, currentResources, tracksData)
                          );
                          if (tracksMeetingThisPriority.length > 0) {
@@ -1398,68 +1424,8 @@
                      }
                     break;
 
-                case 'Peaceful':
-                    // Peaceful Automa Logic (Rules 8, 1, 3, 4, 5) - Excludes Military where possible
-                    const peacefulPriorityOrder = [
-                         { rule: 8, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 8) }, // Peaceful Rule 1: Building Gain (Non-Military)
-                         { rule: 1, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 1) }, // Peaceful Rule 2: Tier IV (Non-Military)
-                         { rule: 3, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 3) }, // Peaceful Rule 3: Landmark Approaching (Non-Military)
-                         { rule: 4, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 4) }, // Peaceful Rule 4: Any Affordable > 0 (Non-Military)
-                         { rule: 5, check: (track) => currentAutomaPos[track] === 0 && track !== 'Military' && isAffordableAndMeetsRule(track, 5) }, // Peaceful Rule 5: From Space 0 (Normal Rule 5) - Added check for current position
-                    ];
-
-                     for (const priority of peacefulPriorityOrder) {
-                         let tracksMeetingThisPriority = tracks.filter(trackName => priority.check(trackName));
-                         if (tracksMeetingThisPriority.length > 0) {
-                              candidateTracks = tracksMeetingThisPriority;
-                              triggeredPriorityRule = priority.rule;
-                              break;
-                         }
-                     }
-
-                     // If no non-military moves, check if *only* military moves are possible (and affordable)
-                     if (candidateTracks.length === 0) {
-                          const militaryAffordableAboveZero = isAffordableAndMeetsRule('Military', 4);
-                          const militaryAffordableFromZero = currentAutomaPos['Military'] === 0 && isAffordableAndMeetsRule('Military', 5); // Explicitly check Military from 0
-
-                          if (militaryAffordableAboveZero) {
-                               candidateTracks = ['Military'];
-                               triggeredPriorityRule = 4; // Fallback to Rule 4 for Military
-                          } else if (militaryAffordableFromZero) {
-                               candidateTracks = ['Military'];
-                               triggeredPriorityRule = 5; // Fallback to Rule 5 for Military
-                          } else {
-                               // No affordable moves at all (including Military)
-                               return { action: 'income', details: `[${selectedCharacter}] No affordable advance possible. Automa takes an Income Turn.` };
-                           }
-                     }
-                    break;
-
-                case 'Revengeful': // Corrected spelling
-                    // Revengful Automa Logic (Rules 9, 10, 1, 2, 3, 4, 5)
-                    const revengfulPriorityOrder = [
-                         { rule: 9, check: (track) => isAffordableAndMeetsRule(track, 9) }, // Revengful Rule 1: Player Ahead
-                         { rule: 10, check: (track) => isAffordableAndMeetsRule(track, 10) }, // Revengful Rule 2: Player Claimed Landmark
-                         { rule: 1, check: (track) => isAffordableAndMeetsRule(track, 1) }, // Revengful Rule 3: Tier IV (Normal Rule 1)
-                         { rule: 2, check: (track) => isAffordableAndMeetsRule(track, 2) }, // Revengful Rule 4: Tied with Player (Normal Rule 2)
-                         { rule: 3, check: (track) => isAffordableAndMeetsRule(track, 3) }, // Revengful Rule 5: Landmark Approaching (Normal Rule 3)
-                         { rule: 4, check: (track) => isAffordableAndMeetsRule(track, 4) }, // Revengful Rule 6: Any Affordable > 0 (Normal Rule 4)
-                         { rule: 5, check: (track) => currentAutomaPos[track] === 0 && isAffordableAndMeetsRule(track, 5) }, // Revengful Rule 7: From Space 0 (Normal Rule 5) - Added check for current position
-                    ];
-
-                     for (const priority of revengfulPriorityOrder) {
-                         let tracksMeetingThisPriority = tracks.filter(trackName => priority.check(trackName));
-                         if (tracksMeetingThisPriority.length > 0) {
-                              candidateTracks = tracksMeetingThisPriority;
-                              triggeredPriorityRule = priority.rule;
-                              break;
-                         }
-                     }
-
-                     if (candidateTracks.length === 0) {
-                         return { action: 'income', details: `[${selectedCharacter}] No affordable advance possible. Automa takes an Income Turn.` };
-                     }
-                    break;
+                // Removed Peaceful Case
+                // Removed Revengeful Case
 
                 default:
                     // Fallback to Normal logic if character is unknown or not selected
@@ -1467,6 +1433,7 @@
                      const defaultPriorityOrder = [1, 2, 3];
                      for (const priority of defaultPriorityOrder) {
                           let tracksMeetingThisPriority = tracks.filter(trackName =>
+                              // FIX: Pass currentResources to meetsPriorityRuleAndAffordableAboveZero
                               meetsPriorityRuleAndAffordableAboveZero(currentAutomaPos, currentPlayerPos, trackName, priority, landmarksState, currentResources, tracksData)
                           );
                           if (tracksMeetingThisPriority.length > 0) {
@@ -1737,8 +1704,8 @@
                                       <option value="Normal">Normal</option>
                                       <option value="Aggressive">Aggressive</option>
                                       <option value="Strategic">Strategic</option>
-                                      <option value="Peaceful">Peaceful</option>
-                                      <option value="Revengeful">Revengeful</option> {/* Corrected spelling */}
+                                       {/* Removed Peaceful */}
+                                       {/* Removed Revengeful */}
                                   </select>
                               </div>
                          </div>
@@ -2070,7 +2037,22 @@
 
         // State for the entire game
         const [gameState, setGameState] = React.useState(initialGameState);
-        const [message, setMessage] = React.useState(''); // General message state
+        const [message, setMessage] = React.useState(''); // General message state (remains for below Automa Panel)
+
+        // New state for the temporary notification message
+        const [tempMessage, setTempMessage] = React.useState('');
+
+
+        // Effect to clear the temporary message after a delay
+        React.useEffect(() => {
+            if (tempMessage) {
+                const timer = setTimeout(() => {
+                    setTempMessage('');
+                }, 3000); // Message disappears after 3 seconds (3000ms)
+                return () => clearTimeout(timer); // Cleanup the timer
+            }
+        }, [tempMessage]); // Re-run effect whenever tempMessage changes
+
 
         // State for history and undo/redo
         const [history, setHistory] = React.useState([initialGameState]);
@@ -2112,7 +2094,9 @@
 
         // Handle Automa's Turn
         const handleAutomaTurn = () => {
-            setMessage('Calculating Automa turn...');
+            setMessage('Calculating Automa turn...'); // Keep this for the panel message
+            setTempMessage('Calculating Automa turn...'); // Also show temporary message
+
             // Pass current state, availablePermutations, and selected character to calculation
             // Pass availablePermutations from the state
             const move = calculateAutomaMove(gameState, availablePermutations, gameState.automaCharacter);
@@ -2150,6 +2134,9 @@
 
                  // Update state and history
                  updateState(newState);
+
+                // Update temp message after initiating income process
+                setTempMessage('Automa took Income Turn.');
 
 
             } else if (move.action === 'advance') {
@@ -2235,6 +2222,9 @@
                 // Update state and history
                 updateState(newState);
 
+                // Update temp message after advance
+                setTempMessage(`Automa Advanced on ${track} to space ${newPos}.`);
+
             }
         };
 
@@ -2243,6 +2233,7 @@
             // Prevent clicking on spaces before the current player position
             if (spaceIndex <= gameState.playerPositions[trackName]) {
                 setMessage(`You cannot move backward or stay on the same space.`);
+                setTempMessage(`Cannot move backward or stay on same space.`); // Temporary message
                 return;
             }
 
@@ -2274,7 +2265,8 @@
 
             // Update state with the new player position and potentially claimed landmarks
             updateState(newState);
-            setMessage(`Player moved to space ${spaceIndex} on the ${trackName} track.`);
+            setMessage(`Player moved to space ${spaceIndex} on the ${trackName} track.`); // Keep this for the panel message
+            setTempMessage(`Player Advanced on ${trackName} to space ${spaceIndex}.`); // Temporary message
         };
 
          // Handle advancing player by one space
@@ -2284,7 +2276,8 @@
 
              // Prevent advancing past space 12
              if (nextPos > 12) {
-                 setMessage(`Player is already at the end of the ${trackName} track.`);
+                 setMessage(`Player is already at the end of the ${trackName} track.`); // Keep for panel
+                 setTempMessage(`Player is at the end of ${trackName} track.`); // Temporary message
                  return;
              }
 
@@ -2308,7 +2301,8 @@
 
              // Update state and history
              updateState(newState);
-             setMessage(`Player advanced 1 space on the ${trackName} track.`);
+             setMessage(`Player advanced 1 space on the ${trackName} track.`); // Keep for panel
+             setTempMessage(`Player Advanced 1 space on ${trackName} track.`); // Temporary message
          };
 
          // Handle advancing automa by one space (Manual Advance - No Benefits)
@@ -2318,7 +2312,8 @@
 
              // Prevent advancing past space 12
              if (nextPos > 12) {
-                 setMessage(`Automa is already at the end of the ${trackName} track.`);
+                 setMessage(`Automa is already at the end of the ${trackName} track.`); // Keep for panel
+                 setTempMessage(`Automa is at the end of ${trackName} track.`); // Temporary message
                  return;
              }
 
@@ -2344,7 +2339,8 @@
 
              // Update state and history
              updateState(newState);
-             setMessage(`Automa manually advanced 1 space on the ${trackName} track (No Benefits).`);
+             setMessage(`Automa manually advanced 1 space on the ${trackName} track (No Benefits).`); // Keep for panel
+             setTempMessage(`Manual Automa Advance (No Benefits) on ${trackName}.`); // Temporary message
          };
 
           // Handle advancing automa by one space (Manual Advance - With Benefits)
@@ -2354,7 +2350,8 @@
 
               // Prevent advancing past space 12
               if (nextPos > 12) {
-                  setMessage(`Automa is already at the end of the ${trackName} track.`);
+                  setMessage(`Automa is already at the end of the ${trackName} track.`); // Keep for panel
+                  setTempMessage(`Automa is at the end of ${trackName} track.`); // Temporary message
                   return;
               }
 
@@ -2394,7 +2391,8 @@
 
               // Update state and history
               updateState(newState);
-              setMessage(`Automa manually advanced 1 space on the ${trackName} track (Gain Benefits).${buildingGainMessage}`);
+              setMessage(`Automa manually advanced 1 space on the ${trackName} track (Gain Benefits).${buildingGainMessage}`); // Keep for panel
+              setTempMessage(`Manual Automa Advance (Gain Benefits) on ${trackName}.`); // Temporary message
           };
 
 
@@ -2468,7 +2466,8 @@
              setShowAutomaIncomePopup(false); // Use showAutomaIncomePopup
              // Remove class from body to re-enable scrolling
              document.body.classList.remove('modal-open');
-             setMessage('Automa Income Turn results confirmed.');
+             setMessage('Automa Income Turn results confirmed.'); // Keep for panel
+             setTempMessage('Automa Income Turn confirmed.'); // Temporary message
         };
 
         // Handle canceling the automa income pop-up
@@ -2477,7 +2476,8 @@
             setShowAutomaIncomePopup(false); // Use showAutomaIncomePopup
             // Remove class from body to re-enable scrolling
             document.body.classList.remove('modal-open');
-            setMessage('Automa Income Turn input canceled.');
+            setMessage('Automa Income Turn input canceled.'); // Keep for panel
+            setTempMessage('Automa Income Turn canceled.'); // Temporary message
              // Clear the Automa turn message if income is canceled
              setGameState(prevState => ({ ...prevState, automaTurnMessage: '', currentTiebreakerTrack: null }));
              // Remove the incomplete income history entry
@@ -2507,7 +2507,8 @@
              setShowBuildingAdjustmentModal(false);
              // Remove class from body to re-enable scrolling
              document.body.classList.remove('modal-open');
-             setMessage('Automa buildings manually adjusted.');
+             setMessage('Automa buildings manually adjusted.'); // Keep for panel
+             setTempMessage('Automa buildings adjusted.'); // Temporary message
         };
 
         // Handle canceling building adjustments
@@ -2516,7 +2517,8 @@
             setShowBuildingAdjustmentModal(false);
             // Remove class from body to re-enable scrolling
             document.body.classList.remove('modal-open');
-            setMessage('Automa building adjustment canceled.');
+            setMessage('Automa building adjustment canceled.'); // Keep for panel
+            setTempMessage('Building adjustment canceled.'); // Temporary message
         };
 
          // Handle opening the resource adjustment modal
@@ -2538,7 +2540,8 @@
              setShowResourceAdjustmentModal(false);
              // Remove class from body to re-enable scrolling
              document.body.classList.remove('modal-open');
-             setMessage('Automa resource adjustment canceled.');
+             setMessage('Automa resource adjustment canceled.'); // Keep for panel
+             setTempMessage('Automa resources adjusted.'); // Temporary message
         };
 
          // Handle canceling resource adjustments
@@ -2547,7 +2550,8 @@
              setShowResourceAdjustmentModal(false);
              // Remove class from body to re-enable scrolling
              document.body.classList.remove('modal-open');
-             setMessage('Automa resource adjustment canceled.');
+             setMessage('Automa resource adjustment canceled.'); // Keep for panel
+             setTempMessage('Resource adjustment canceled.'); // Temporary message
          };
 
         // State for the position adjustment modal
@@ -2625,7 +2629,8 @@
             // Close the modal
             setShowPositionAdjustmentModal(false);
             document.body.classList.remove('modal-open');
-            setMessage('Player and Automa positions manually adjusted.');
+            setMessage('Player and Automa positions manually adjusted.'); // Keep for panel
+            setTempMessage('Positions manually adjusted.'); // Temporary message
         };
 
         // Handle canceling position adjustments
@@ -2633,7 +2638,8 @@
             // Simply close the modal
             setShowPositionAdjustmentModal(false);
             document.body.classList.remove('modal-open');
-            setMessage('Position adjustment canceled.');
+            setMessage('Position adjustment canceled.'); // Keep for panel
+            setTempMessage('Position adjustment canceled.'); // Temporary message
         };
 
 
@@ -2654,7 +2660,8 @@
              setAvailablePermutations(allTrackPermutations); // Reset permutations
              setCurrentTiebreakerTrack(null); // Clear current tiebreaker
              setIsHistoryVisible(true); // Show history on restart
-             setMessage('Game restarted.');
+             setMessage('Game restarted.'); // Keep for panel
+             setTempMessage('Game restarted.'); // Temporary message
              // Close modal
              setShowConfirmationModal(false);
              document.body.classList.remove('modal-open');
@@ -2668,8 +2675,8 @@
              // Close modal without performing action
              setShowConfirmationModal(false);
              document.body.classList.remove('modal-open');
-             setConfirmationAction(null);
-             setMessage('Action canceled.');
+             setMessage('Action canceled.'); // Keep for panel
+             setTempMessage('Action canceled.'); // Temporary message
         };
 
 
@@ -2686,10 +2693,12 @@
                 // Restore available permutations and tiebreaker from the previous state
                 setAvailablePermutations(previousState.availablePermutations || allTrackPermutations); // Use saved or default
                 setCurrentTiebreakerTrack(previousState.currentTiebreakerTrack);
-                setMessage('Undo successful.');
+                setMessage('Undo successful.'); // Keep for panel
+                setTempMessage('Undo successful.'); // Temporary message
             } else {
                 // If already at the beginning of history, cannot undo
-                setMessage('Cannot undo further.');
+                setMessage('Cannot undo further.'); // Keep for panel
+                setTempMessage('Cannot undo further.'); // Temporary message
             }
         };
 
@@ -2706,10 +2715,12 @@
                  // Restore available permutations and tiebreaker from the next state
                 setAvailablePermutations(nextState.availablePermutations || allTrackPermutations); // Use saved or default
                 setCurrentTiebreakerTrack(nextState.currentTiebreakerTrack);
-                setMessage('Redo successful.');
+                setMessage('Redo successful.'); // Keep for panel
+                setTempMessage('Redo successful.'); // Temporary message
             } else {
                 // If already at the end of history, cannot redo
-                setMessage('Cannot redo further.');
+                setMessage('Cannot redo further.'); // Keep for panel
+                setTempMessage('Cannot redo further.'); // Temporary message
             }
         };
 
@@ -2740,7 +2751,8 @@
              setAvailablePermutations(allTrackPermutations); // Reset permutations for the new game
              setCurrentTiebreakerTrack(null); // Clear tiebreaker
              setIsHistoryVisible(true); // Show history on start
-             setMessage(`Game started with Automa color: ${setupAutomaColor}, Character: ${setupAutomaCharacter}.`);
+             setMessage(`Game started with Automa color: ${setupAutomaColor}, Character: ${setupAutomaCharacter}.`); // Keep for panel
+             setTempMessage('Game started!'); // Temporary message
          };
 
 
@@ -2756,10 +2768,12 @@
                  updateState(newState);
                  // Find the landmark name for the message
                  const landmarkName = newState.landmarks[landmarkKey].name;
-                 setMessage(`Status of ${landmarkName} updated to ${newStatus}.`);
+                 setMessage(`Status of ${landmarkName} updated to ${newStatus}.`); // Keep for panel
+                 setTempMessage(`Landmark "${landmarkName}" updated to ${newStatus}.`); // Temporary message
              } else {
                  console.warn(`Attempted to change status of non-existent landmark with key: ${landmarkKey}`);
-                 setMessage(`Error: Could not find landmark with key ${landmarkKey}.`);
+                 setMessage(`Error: Could not find landmark with key ${landmarkKey}.`); // Keep for panel
+                 setTempMessage('Error updating landmark status.'); // Temporary message
              }
          };
 
@@ -2785,7 +2799,8 @@
              // Update state with the new history and incremented turn number
              updateState(newState);
 
-             setMessage('Player Income Turn recorded.');
+             setMessage('Player Income Turn recorded.'); // Keep for panel
+             setTempMessage('Player Income Turn recorded.'); // Temporary message
          };
 
          // Toggle history visibility
@@ -2828,8 +2843,8 @@
                                      <option value="Normal">Normal</option>
                                      <option value="Aggressive">Aggressive</option>
                                      <option value="Strategic">Strategic</option>
-                                     <option value="Peaceful">Peaceful</option>
-                                     <option value="Revengeful">Revengeful</option>
+                                       {/* Removed Peaceful */}
+                                       {/* Removed Revengeful */}
                                  </select>
                              </div>
 
@@ -2906,10 +2921,17 @@
                               <button
                                   className="restart-button"
                                   onClick={handleRestartGame}
-                              >
+                               >
                                   Restart Game
                               </button>
                           </div>
+
+                         {/* Temporary Notification Message */}
+                         {tempMessage && (
+                             <div className="notification-message">
+                                 {tempMessage}
+                             </div>
+                         )}
 
 
                          {/* Automa History Section */}
