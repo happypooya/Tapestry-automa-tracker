@@ -1045,6 +1045,10 @@
          const meetsPriorityRuleAndAffordableAboveZero = (automaPos, playerPos, trackName, rule, landmarksState, automaResources, tracksData) => {
              const currentAutomaPos = automaPos[trackName];
 
+             // Added logging here
+             console.log(`Checking track (AboveZero): ${trackName}. Current Automa Pos: ${currentAutomaPos}, Type: ${typeof currentAutomaPos}`);
+
+
              // Exclude space 0 from consideration for Rules 1-3
              if (currentAutomaPos === 0) {
                  // console.log(`  - ${trackName}: Automa is on space 0, excluding from Rules 1-3 checks.`);
@@ -1058,15 +1062,15 @@
              }
 
              // Calculate the cost to move to the *next* space
-             const costToAdvance = tracksData[trackName].cost(currentAutomaPos + 1);
+             // FIX: Use the local currentAutomaPos variable instead of re-accessing automaPos[trackName]
+             const nextSpace = currentAutomaPos + 1;
+             const costToAdvance = tracksData[trackName].cost(nextSpace);
 
              // Check if the move is affordable first
              if (automaResources < costToAdvance) {
                  // console.log(`  - ${trackName}: Not affordable (needs ${costToAdvance}, has ${automaResources}).`);
                  return false;
              }
-
-             const nextSpace = currentAutomaPos + 1;
 
              // Ensure next space data exists (should always for 0-12)
              const nextSpaceData = tracksData[trackName].spacesData.find(s => s.number === nextSpace);
@@ -1115,12 +1119,17 @@
          const meetsPriorityRuleAndAffordable = (automaPos, playerPos, trackName, rule, landmarksState, automaResources, tracksData) => {
              const currentAutomaPos = automaPos[trackName];
 
+             // Added logging here
+             console.log(`Checking track (Affordable): ${trackName}. Current Automa Pos: ${currentAutomaPos}, Type: ${typeof currentAutomaPos}`);
+
+
              // Check if Automa is already at the end of the track
              if (currentAutomaPos >= 12) {
                  return false;
              }
 
-             const nextSpace = currentAutomaPos[trackName] + 1;
+             // FIX: Use the local currentAutomaPos variable instead of re-accessing automaPos[trackName]
+             const nextSpace = currentAutomaPos + 1;
              const costToAdvance = tracksData[trackName].cost(nextSpace);
 
              // Check if the move is affordable
@@ -1338,6 +1347,9 @@
 
             // Function to update state and manage history
             const updateState = (newState) => {
+                // Added logging here
+                console.log("Updating state with:", newState);
+
                 // Clear future history if making a new move (not just undo/redo)
                 const newHistory = history.slice(0, historyIndex + 1);
                 newHistory.push(newState);
@@ -1392,11 +1404,23 @@
                     automaCharacter: selectedCharacter
                 });
 
+                // Log Automa positions at the very start of the calculation
+                console.log("Automa Positions at start of calculateAutomaMove:", currentState.automaPositions);
+
+
                 const currentAutomaPos = currentState.automaPositions;
                 const currentPlayerPos = currentState.playerPositions;
                 const currentResources = currentState.automaResources;
                 const tracks = Object.keys(tracksData);
                 const landmarksState = currentState.landmarks;
+
+                // Add explicit check for NaN in automaPositions
+                tracks.forEach(trackName => {
+                    if (isNaN(currentAutomaPos[trackName])) {
+                        console.error(`Automa position for ${trackName} is NaN! Value: ${currentAutomaPos[trackName]}`);
+                    }
+                });
+
 
                 let candidateTracks = []; // Array to hold tracks that meet the highest priority rule OR are affordable for Rule 4/5
                 let triggeredPriorityRule = null; // To store the highest priority rule triggered
@@ -1408,8 +1432,10 @@
                      if (currentAutomaPos[trackName] >= 12) {
                          return false;
                      }
-                     const nextSpace = currentAutomaPos[trackName] + 1;
+                     // FIX: Use the local currentAutomaPos variable instead of re-accessing automaPos[trackName]
+                     const nextSpace = currentAutomaPos[trackName] + 1; // This line is correct here as it's accessing the object passed in
                      const costToAdvance = tracksData[trackName].cost(nextSpace);
+
                      if (currentResources < costToAdvance) {
                          return false; // Not affordable
                      }
@@ -1558,8 +1584,8 @@
                         }
 
                         if (candidateTracks.length === 0) {
-                             // Check Rule 5 (Start from Space 0)
-                             let tracksOnSpaceZero = tracks.filter(trackName => isAffordableAndMeetsRule(trackName, 5));
+                             // Check Rule 5 (Start from Space 0) - ONLY check tracks where Automa is currently on space 0
+                             let tracksOnSpaceZero = tracks.filter(trackName => currentAutomaPos[trackName] === 0 && isAffordableAndMeetsRule(trackName, 5));
                              if (tracksOnSpaceZero.length > 0) {
                                  candidateTracks = tracksOnSpaceZero;
                                  triggeredPriorityRule = 5;
@@ -1584,7 +1610,7 @@
                              { rule: 1, check: (track) => isAffordableAndMeetsRule(track, 1) }, // Aggressive Rule 3: Tier IV (Normal Rule 1)
                              { rule: 3, check: (track) => isAffordableAndMeetsRule(track, 3) }, // Aggressive Rule 4: Landmark Approaching (Normal Rule 3)
                              { rule: 4, check: (track) => isAffordableAndMeetsRule(track, 4) }, // Aggressive Rule 5: Any Affordable > 0 (Normal Rule 4)
-                             { rule: 5, check: (track) => isAffordableAndMeetsRule(track, 5) }, // Aggressive Rule 6: From Space 0 (Normal Rule 5)
+                             { rule: 5, check: (track) => currentAutomaPos[track] === 0 && isAffordableAndMeetsRule(track, 5) }, // Aggressive Rule 6: From Space 0 (Normal Rule 5) - Added check for current position
                         ];
 
                          for (const priority of aggressivePriorityOrder) {
@@ -1609,7 +1635,7 @@
                              { rule: 1, check: (track) => isAffordableAndMeetsRule(track, 1) }, // Strategic Rule 3: Tier IV (Normal Rule 1)
                              { rule: 3, check: (track) => isAffordableAndMeetsRule(track, 3) }, // Strategic Rule 4: Landmark Approaching (Normal Rule 3)
                              { rule: 4, check: (track) => isAffordableAndMeetsRule(track, 4) }, // Strategic Rule 5: Any Affordable > 0 (Normal Rule 4)
-                             { rule: 5, check: (track) => isAffordableAndMeetsRule(track, 5) }, // Strategic Rule 6: From Space 0 (Normal Rule 5)
+                             { rule: 5, check: (track) => currentAutomaPos[track] === 0 && isAffordableAndMeetsRule(track, 5) }, // Strategic Rule 6: From Space 0 (Normal Rule 5) - Added check for current position
                         ];
 
                          for (const priority of strategicPriorityOrder) {
@@ -1633,7 +1659,7 @@
                              { rule: 1, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 1) }, // Peaceful Rule 2: Tier IV (Non-Military)
                              { rule: 3, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 3) }, // Peaceful Rule 3: Landmark Approaching (Non-Military)
                              { rule: 4, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 4) }, // Peaceful Rule 4: Any Affordable > 0 (Non-Military)
-                             { rule: 5, check: (track) => track !== 'Military' && isAffordableAndMeetsRule(track, 5) }, // Peaceful Rule 5: From Space 0 (Non-Military)
+                             { rule: 5, check: (track) => currentAutomaPos[track] === 0 && track !== 'Military' && isAffordableAndMeetsRule(track, 5) }, // Peaceful Rule 5: From Space 0 (Non-Military) - Added check for current position
                         ];
 
                          for (const priority of peacefulPriorityOrder) {
@@ -1648,7 +1674,7 @@
                          // If no non-military moves, check if *only* military moves are possible (and affordable)
                          if (candidateTracks.length === 0) {
                               const militaryAffordableAboveZero = isAffordableAndMeetsRule('Military', 4);
-                              const militaryAffordableFromZero = isAffordableAndMeetsRule('Military', 5);
+                              const militaryAffordableFromZero = currentAutomaPos['Military'] === 0 && isAffordableAndMeetsRule('Military', 5); // Explicitly check Military from 0
 
                               if (militaryAffordableAboveZero) {
                                    candidateTracks = ['Military'];
@@ -1672,7 +1698,7 @@
                              { rule: 2, check: (track) => isAffordableAndMeetsRule(track, 2) }, // Revengful Rule 4: Tied with Player (Normal Rule 2)
                              { rule: 3, check: (track) => isAffordableAndMeetsRule(track, 3) }, // Revengful Rule 5: Landmark Approaching (Normal Rule 3)
                              { rule: 4, check: (track) => isAffordableAndMeetsRule(track, 4) }, // Revengful Rule 6: Any Affordable > 0 (Normal Rule 4)
-                             { rule: 5, check: (track) => isAffordableAndMeetsRule(track, 5) }, // Revengful Rule 7: From Space 0 (Normal Rule 5)
+                             { rule: 5, check: (track) => currentAutomaPos[track] === 0 && isAffordableAndMeetsRule(track, 5) }, // Revengful Rule 7: From Space 0 (Normal Rule 5) - Added check for current position
                         ];
 
                          for (const priority of revengfulPriorityOrder) {
@@ -1705,7 +1731,8 @@
                          }
 
                          if (candidateTracks.length === 0) {
-                              let tracksOnSpaceZero = tracks.filter(trackName => isAffordableAndMeetsRule(trackName, 5));
+                              // Check Rule 5 (Start from Space 0) - ONLY check tracks where Automa is currently on space 0
+                             let tracksOnSpaceZero = tracks.filter(trackName => currentAutomaPos[trackName] === 0 && isAffordableAndMeetsRule(trackName, 5));
                               if (tracksOnSpaceZero.length > 0) {
                                   candidateTracks = tracksOnSpaceZero;
                                   triggeredPriorityRule = 5;
@@ -1742,10 +1769,15 @@
                     console.log("Using existing permutation:", permutationToUse);
                 }
 
+                // Log candidate tracks and the permutation before finding the track to advance
+                console.log("Candidate Tracks:", candidateTracks, "Permutation to Use:", permutationToUse);
+
+
                 // Find the first track in the chosen permutation that is also in the `candidateTracks`
                 const trackToAdvance = permutationToUse.find(track => candidateTracks.includes(track));
 
-                console.log("Track selected by permutation from candidates:", trackToAdvance);
+                // Log the selected track to advance
+                console.log("Selected trackToAdvance:", trackToAdvance);
 
 
                 if (trackToAdvance) {
@@ -1766,7 +1798,7 @@
                          case 8: reasonDescription = 'Building Gain (Non-Military)'; break;
                          case 9: reasonDescription = 'Player Ahead'; break;
                          case 10: reasonDescription = 'Player Claimed Landmark'; break;
-                         case 'Special': reasonDescription = `Special Logic (${move.details.match(/\(([^)]+)\)/)[1]})`; break; // Extract type from details
+                         case 'Special': reasonDescription = `Special Logic (${details.match(/\(([^)]+)\)/)?.[1] || 'Unknown'})`; break; // Extract type from details, handle potential null
                          default: reasonDescription = 'Unknown Rule';
                      }
 
