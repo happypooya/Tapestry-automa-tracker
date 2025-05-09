@@ -721,7 +721,7 @@
             z-index: 100; /* Ensure it's above most other elements */
             opacity: 1; /* Start fully visible */
             transition: opacity 0.5s ease-in-out; /* Smooth fade out */
-            pointer-events: none; /* Allow clicks to pass through */
+            pointer-events: none; /* Allow clicking through tooltip */
              text-align: center; /* Center the text */
              max-width: 80%; /* Limit width on smaller screens */
         }
@@ -1702,7 +1702,6 @@
                                       className="p-2 rounded border shadow-sm text-gray-700 text-sm flex-grow"
                                   >
                                       <option value="Normal">Normal</option>
-                                      <option value="Aggressive">Aggressive</option>
                                       <option value="Strategic">Strategic</option>
                                        {/* Removed Peaceful */}
                                        {/* Removed Revengeful */}
@@ -1987,6 +1986,9 @@
 
     // Main App Component
     function App() {
+        // Define the key for localStorage
+        const LOCAL_STORAGE_KEY = 'tapestryAutomaState';
+
         // Initial state setup - Ensure all tracks are initialized to space 0
         const initialGameState = {
             playerPositions: {
@@ -2032,11 +2034,57 @@
             turnNumber: 1, // Track the current turn number
 
             isSetupComplete: false, // New state to track if initial setup is done
+
+            // Store available permutations in state for persistence
+            availablePermutations: allTrackPermutations,
         };
 
 
         // State for the entire game
-        const [gameState, setGameState] = React.useState(initialGameState);
+        // Load state from localStorage on initial render
+        const [gameState, setGameState] = React.useState(() => {
+            try {
+                const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (savedState) {
+                    const parsedState = JSON.parse(savedState);
+                     // Ensure loaded state has necessary properties, fallback to initial if missing
+                     return { ...initialGameState, ...parsedState };
+                }
+            } catch (error) {
+                console.error("Failed to load state from localStorage:", error);
+                // Fallback to initial state if loading fails
+            }
+             // If no saved state or loading failed, return the initial state
+             return initialGameState;
+        });
+
+
+        // State for history and undo/redo
+        // Initialize history and historyIndex based on loaded gameState or initialGameState
+        const [history, setHistory] = React.useState(() => {
+             // If gameState was loaded from storage, use its history, otherwise use initial history
+             return gameState.automaHistory ? [gameState] : [initialGameState];
+        });
+         const [historyIndex, setHistoryIndex] = React.useState(() => {
+             // If gameState was loaded from storage and has history, set index to the last entry
+             return gameState.automaHistory && gameState.automaHistory.length > 0 ? 0 : 0; // Start at 0 for loaded state
+         });
+
+
+        // State for available permutations (used for Automa tiebreaker)
+        // Initialize availablePermutations based on loaded gameState or initialGameState
+        const [availablePermutations, setAvailablePermutations] = React.useState(() => {
+             // If gameState was loaded from storage and has availablePermutations, use it
+             return gameState.availablePermutations || allTrackPermutations;
+        });
+
+        // State to store the current tiebreaker track being used
+        // Initialize currentTiebreakerTrack based on loaded gameState or initialGameState
+        const [currentTiebreakerTrack, setCurrentTiebreakerTrack] = React.useState(() => {
+             return gameState.currentTiebreakerTrack || null;
+        });
+
+
         const [message, setMessage] = React.useState(''); // General message state (remains for below Automa Panel)
 
         // New state for the temporary notification message
@@ -2053,16 +2101,26 @@
             }
         }, [tempMessage]); // Re-run effect whenever tempMessage changes
 
+         // Effect to save state to localStorage whenever gameState changes
+         React.useEffect(() => {
+             try {
+                 // Save the entire gameState object to localStorage
+                 // Include availablePermutations and currentTiebreakerTrack in the saved state
+                 const stateToSave = {
+                     ...gameState,
+                     availablePermutations: availablePermutations,
+                     currentTiebreakerTrack: currentTiebreakerTrack,
+                     // History is already part of gameState.automaHistory
+                 };
+                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+             } catch (error) {
+                 console.error("Failed to save state to localStorage:", error);
+             }
+         }, [gameState, availablePermutations, currentTiebreakerTrack]); // Save when gameState, availablePermutations, or currentTiebreakerTrack changes
 
-        // State for history and undo/redo
-        const [history, setHistory] = React.useState([initialGameState]);
-        const [historyIndex, setHistoryIndex] = React.useState(0);
+
+        // State for history visibility
         const [isHistoryVisible, setIsHistoryVisible] = React.useState(true); // State to control history visibility
-
-        // State for available permutations (used for Automa tiebreaker)
-        const [availablePermutations, setAvailablePermutations] = React.useState(allTrackPermutations);
-        // State to store the current tiebreaker track being used
-        const [currentTiebreakerTrack, setCurrentTiebreakerTrack] = React.useState(null);
 
         // State for modals
         const [showAutomaIncomePopup, setShowAutomaIncomePopup] = React.useState(false); // State for Automa Income popup
@@ -2086,9 +2144,13 @@
             // If we are not at the end of history (meaning we've undone some moves),
             // discard the future history before adding the new state.
             const newHistory = history.slice(0, historyIndex + 1);
-            setHistory([...newHistory, newState]);
-            setHistoryIndex(newHistory.length);
+            const updatedHistory = [...newHistory, newState];
+
+            setHistory(updatedHistory);
+            setHistoryIndex(updatedHistory.length - 1); // Set index to the latest state
             setGameState(newState);
+
+             // The useEffect hook will handle saving to localStorage automatically when gameState, availablePermutations, or currentTiebreakerTrack changes
         };
 
 
@@ -2288,8 +2350,10 @@
              // Update the player's position
              newState.playerPositions[trackName] = nextPos;
 
-             // Check for claimed landmarks
+             // Check for claimed landmarks (still claim landmarks on a free move)
              checkLandmarks(newState, trackName, currentPos, nextPos, 'player'); // Modify newState directly
+
+             // No building gain logic here for manual advance without benefits
 
              // Add Player Advance 1 Space action to history
              newState.automaHistory.push({
@@ -2668,6 +2732,8 @@
              setConfirmationAction(null);
              // Show the setup screen again
              setGameState(prevState => ({ ...prevState, isSetupComplete: false }));
+             // Clear localStorage on restart
+             localStorage.removeItem(LOCAL_STORAGE_KEY);
         };
 
         // Handle canceling confirmation
@@ -2742,6 +2808,10 @@
                  automaColor: setupAutomaColor,
                  automaCharacter: setupAutomaCharacter,
                  isSetupComplete: true, // Mark setup as complete
+                 automaHistory: [], // Start with empty history for a new game
+                 turnNumber: 1, // Start at turn 1
+                 availablePermutations: allTrackPermutations, // Reset permutations
+                 currentTiebreakerTrack: null, // Clear tiebreaker
              };
 
              // Reset all state to the new initial values
@@ -2753,6 +2823,13 @@
              setIsHistoryVisible(true); // Show history on start
              setMessage(`Game started with Automa color: ${setupAutomaColor}, Character: ${setupAutomaCharacter}.`); // Keep for panel
              setTempMessage('Game started!'); // Temporary message
+
+             // Save the initial state of the new game to localStorage
+             try {
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newInitialState));
+             } catch (error) {
+                  console.error("Failed to save initial game state to localStorage:", error);
+             }
          };
 
 
@@ -2841,7 +2918,6 @@
                                      onChange={(e) => handleSetupAutomaCharacterChange(e.target.value)}
                                  >
                                      <option value="Normal">Normal</option>
-                                     <option value="Aggressive">Aggressive</option>
                                      <option value="Strategic">Strategic</option>
                                        {/* Removed Peaceful */}
                                        {/* Removed Revengeful */}
@@ -2923,7 +2999,7 @@
                                   onClick={handleRestartGame}
                                >
                                   Restart Game
-                              </button>
+                               </button>
                           </div>
 
                          {/* Temporary Notification Message */}
