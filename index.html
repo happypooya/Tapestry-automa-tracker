@@ -1464,24 +1464,12 @@
 
 
             // --- Tiebreaker Logic (Applies after candidateTracks are determined) ---
-            let permutationToUse = currentState.currentTiebreakerTrack;
-            // Rule 4 and 5 don't clear tiebreaker on single candidate, nor does the 'Special' rule
-            const isDirectAdvance = candidateTracks.length === 1 && ![4, 5, 'Special'].includes(triggeredPriorityRule);
-            const isCurrentPermutationValidForCandidates = permutationToUse && Array.isArray(permutationToUse) && permutationToUse.some(track => candidateTracks.includes(track));
-
-
-            if (!permutationToUse || !isCurrentPermutationValidForCandidates || isDirectAdvance) {
-                 console.log("Drawing a new permutation...");
-                 // Draw and potentially reorder a new permutation based on character
-                 // Pass gameState to drawNewPermutation for Strategic and Revengeful logic
-                 // FIX: Pass the availablePerms parameter to drawNewPermutation
-                 let newPermutation = drawNewPermutation(availablePerms, selectedCharacter, tracksData, currentState); // Pass currentState
-                 permutationToUse = newPermutation;
-                 // Note: The state update for availablePermutations happens outside this function
-                 console.log("New permutation drawn:", permutationToUse);
-            } else {
-                console.log("Using existing permutation:", permutationToUse);
-            }
+            // MODIFIED: Always draw a new permutation for the decision, ignoring persistence logic.
+            console.log("Drawing a new permutation (Persistence Disabled)...");
+            // Draw and potentially reorder a new permutation based on character
+            // Pass gameState to drawNewPermutation for Strategic and Revengeful logic
+            // FIX: Pass the availablePerms parameter to drawNewPermutation
+            let permutationToUse = drawNewPermutation(availablePerms, selectedCharacter, tracksData, currentState); // Pass currentState
 
             // Log candidate tracks and the permutation before finding the track to advance
             console.log("Candidate Tracks:", candidateTracks, "Permutation to Use:", permutationToUse);
@@ -2216,35 +2204,19 @@
                 newState.automaTurnMessage = details;
 
 
-                 // Update the tiebreaker track state variable based on how it was used
-                 // A new permutation is drawn if:
-                 // 1. There is no current tiebreaker track set OR the current one is exhausted (none of its tracks are in the current candidateTracks).
-                 // 2. OR the move was a direct advance (single candidate for Rule 1, 2, 3, 6, 7, 8, 9, 10, 'Special') - Rule 4 and 5 don't clear the tiebreaker on a single candidate.
-                const isCurrentPermutationValidForCandidates = gameState.currentTiebreakerTrack && Array.isArray(gameState.currentTiebreakerTrack) && gameState.currentTiebreakerTrack.some(t => candidateTracks.includes(t));
-                const shouldDrawNewPermutation = !isCurrentPermutationValidForCandidates || (candidateTracks.length === 1 && ![4, 5, 'Special'].includes(move.priorityRule));
+                 // Update the tiebreaker track state variable
+                 // MODIFIED: Always set the new permutation and remove it from available (Persistence Disabled)
+                 newState.currentTiebreakerTrack = permutation; // Set the new permutation
+                 console.log("Tiebreaker set:", newState.currentTiebreakerTrack);
 
-
-                 if (shouldDrawNewPermutation) {
-                     newState.currentTiebreakerTrack = permutation; // Set the new permutation
-                     console.log("Tiebreaker set/retained:", newState.currentTiebreakerTrack);
-
-                     // Remove the used permutation from availablePermutations state
-                     // Only remove if a permutation was actually used (i.e., not the special logic)
-                     if (permutation !== null) {
-                          // FIX: Use the availablePermutations state variable directly here
-                          const usedPermutationIndex = availablePermutations.findIndex(p => JSON.stringify(p) === JSON.stringify(permutation));
-                          if (usedPermutationIndex !== -1) {
-                               const newAvailablePermutations = availablePermutations.filter((_, index) => index !== usedPermutationIndex);
-                               newState.availablePermutations = newAvailablePermutations; // Update in newState
-                               console.log("Removed used permutation from available:", permutation);
-                               console.log("Remaining available permutations:", newAvailablePermutations);
-                          }
-                     }
-
-
-                 } else {
-                     newState.currentTiebreakerTrack = gameState.currentTiebreakerTrack; // Keep the existing permutation
-                     console.log("Tiebreaker retained:", newState.currentTiebreakerTrack);
+                 // Remove the used permutation from availablePermutations state
+                 if (permutation !== null) {
+                      const usedPermutationIndex = availablePermutations.findIndex(p => JSON.stringify(p) === JSON.stringify(permutation));
+                      if (usedPermutationIndex !== -1) {
+                           const newAvailablePermutations = availablePermutations.filter((_, index) => index !== usedPermutationIndex);
+                           newState.availablePermutations = newAvailablePermutations; // Update in newState
+                           console.log("Removed used permutation from available:", permutation);
+                      }
                  }
 
 
