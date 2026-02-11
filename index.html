@@ -1930,7 +1930,6 @@
         const [adjustedPositions, setAdjustedPositions] = React.useState({...positions});
 
         const handleInputChange = (track, value) => {
-            // Fix for deleting the '0'
             if (value === '') {
                 setAdjustedPositions(prev => ({ ...prev, [track]: '' }));
                 return;
@@ -1941,8 +1940,10 @@
             }
         };
 
-        const handleSave = () => {
-            // Ensure any empty strings are saved as 0
+        const handleSave = (e) => {
+            // This prevents the click from "bubbling up" and triggering other modals
+            e.stopPropagation(); 
+            
             const finalPositions = {};
             Object.keys(adjustedPositions).forEach(track => {
                 finalPositions[track] = adjustedPositions[track] === '' ? 0 : parseInt(adjustedPositions[track], 10);
@@ -1953,14 +1954,13 @@
         return (
             <div className="modal-overlay">
                 <div className="modal-content">
-                    <h4>{title}</h4>
+                    <h4 className="mb-4">{title}</h4>
                     {Object.keys(adjustedPositions).map(track => (
-                        <div key={track} className="building-input-group">
-                            <label className="capitalize">{track}:</label>
+                        <div key={track} className="building-input-group mb-4">
+                            <label className="capitalize font-bold block mb-1">{track}:</label>
                             <div className="flex items-center justify-center gap-3">
-                                {/* Mobile-only Down Arrow */}
                                 <button 
-                                    className="md:hidden w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-full shadow active:scale-90"
+                                    className="md:hidden w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-full shadow active:bg-red-700"
                                     onClick={() => handleInputChange(track, (parseInt(adjustedPositions[track], 10) || 0) - 1)}
                                 >
                                     ↓
@@ -1970,13 +1970,12 @@
                                     type="number"
                                     value={adjustedPositions[track]}
                                     onChange={(e) => handleInputChange(track, e.target.value)}
-                                    className="w-16 text-center"
+                                    className="w-16 text-center border rounded p-1"
                                     inputMode="numeric"
                                 />
 
-                                {/* Mobile-only Up Arrow */}
                                 <button 
-                                    className="md:hidden w-10 h-10 flex items-center justify-center bg-green-500 text-white rounded-full shadow active:scale-90"
+                                    className="md:hidden w-10 h-10 flex items-center justify-center bg-green-500 text-white rounded-full shadow active:bg-green-700"
                                     onClick={() => handleInputChange(track, (parseInt(adjustedPositions[track], 10) || 0) + 1)}
                                 >
                                     ↑
@@ -1984,7 +1983,7 @@
                             </div>
                         </div>
                     ))}
-                    <div className="modal-buttons">
+                    <div className="modal-buttons mt-6">
                         <button className="cancel-button" onClick={onCancel}>Cancel</button>
                         <button className="confirm-button" onClick={handleSave}>Confirm</button>
                     </div>
@@ -1992,7 +1991,6 @@
             </div>
         );
     };
-
 
         // Confirmation Modal Component
         const ConfirmationModal = ({ message, onConfirm, onCancel }) => {
