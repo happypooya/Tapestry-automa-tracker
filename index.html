@@ -1985,7 +1985,7 @@
                                 <label htmlFor={`adjust-player-${track}`}>Player:</label>
                                 <div className="flex items-center gap-2">
                                     <button className="md:hidden w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center" onClick={() => handlePlayerInputChange(track, (parseInt(adjustedPlayerPositions[track], 10) || 0) - 1)}>↓</button>
-                                    <input type="number" id={`adjust-player-${track}`} value={adjustedPlayerPositions[track]} onChange={(e) => handlePlayerInputChange(track, e.target.value)} inputMode="numeric" />
+                                    <input type="number" className="w-16 text-center border rounded" id={`adjust-player-${track}`} value={adjustedPlayerPositions[track]} onChange={(e) => handlePlayerInputChange(track, e.target.value)} inputMode="numeric" />
                                     <button className="md:hidden w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center" onClick={() => handlePlayerInputChange(track, (parseInt(adjustedPlayerPositions[track], 10) || 0) + 1)}>↑</button>
                                 </div>
                             </div>
@@ -1995,7 +1995,7 @@
                                 <label htmlFor={`adjust-automa-${track}`}>Automa:</label>
                                 <div className="flex items-center gap-2">
                                     <button className="md:hidden w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center" onClick={() => handleAutomaInputChange(track, (parseInt(adjustedAutomaPositions[track], 10) || 0) - 1)}>↓</button>
-                                    <input type="number" id={`adjust-automa-${track}`} value={adjustedAutomaPositions[track]} onChange={(e) => handleAutomaInputChange(track, e.target.value)} inputMode="numeric" />
+                                    <input type="number" className="w-16 text-center border rounded" id={`adjust-automa-${track}`} value={adjustedAutomaPositions[track]} onChange={(e) => handleAutomaInputChange(track, e.target.value)} inputMode="numeric" />
                                     <button className="md:hidden w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center" onClick={() => handleAutomaInputChange(track, (parseInt(adjustedAutomaPositions[track], 10) || 0) + 1)}>↑</button>
                                 </div>
                             </div>
@@ -2604,16 +2604,7 @@
              setTempMessage('Automa buildings adjusted.'); // Temporary message
         };
 
-        // Handle canceling building adjustments
-        const handleCancelBuildingAdjustments = () => {
-            // Simply close the modal
-            setShowBuildingAdjustmentModal(false);
-            // Remove class from body to re-enable scrolling
-            document.body.classList.remove('modal-open');
-            setMessage('Automa building adjustment canceled.'); // Keep for panel
-            setTempMessage('Building adjustment canceled.'); // Temporary message
-        };
-
+       
          // Handle opening the resource adjustment modal
         const handleOpenResourceAdjustmentModal = () => {
             setShowResourceAdjustmentModal(true);
@@ -2637,14 +2628,7 @@
              setTempMessage('Automa resources adjusted.'); // Temporary message
         };
 
-         // Handle canceling resource adjustments
-         const handleCancelResourceAdjustments = () => {
-             // Simply close the modal
-             setShowResourceAdjustmentModal(false);
-             // Remove class from body to re-enable scrolling
-             document.body.classList.remove('modal-open');
-             setMessage('Automa resource adjustment canceled.'); // Keep for panel
-             setTempMessage('Resource adjustment canceled.'); // Temporary message
+         
          };
 
         // State for the position adjustment modal
@@ -2726,14 +2710,7 @@
             setTempMessage('Positions manually adjusted.'); // Temporary message
         };
 
-        // Handle canceling position adjustments
-        const handleCancelPositionAdjustments = () => {
-            // Simply close the modal
-            setShowPositionAdjustmentModal(false);
-            document.body.classList.remove('modal-open');
-            setMessage('Position adjustment canceled.'); // Keep for panel
-            setTempMessage('Position adjustment canceled.'); // Temporary message
-        };
+    
 
 
         // Handle initiating game restart
