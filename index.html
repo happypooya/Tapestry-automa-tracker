@@ -1835,50 +1835,76 @@
         };
 
          // Resource Adjustment Modal Component
-         const ResourceAdjustmentModal = ({ resources, onSave, onCancel }) => {
-             // Local state for the modal input
-             const [adjustedResources, setAdjustedResources] = React.useState(resources);
+     const ResourceAdjustmentModal = ({ resources, onSave, onCancel }) => {
+        // Local state for the modal input
+        const [adjustedResources, setAdjustedResources] = React.useState(resources);
 
-             // Handle input change for resource count
-             const handleInputChange = (e) => {
-                 // Ensure value is a number and non-negative
-                 const numValue = parseInt(e.target.value, 10) || 0;
-                 setAdjustedResources(Math.max(0, numValue)); // Ensure non-negative
-             };
+        // Handle input change for resource count
+        const handleInputChange = (e) => {
+            const value = e.target.value;
+            // Allow empty string so user can delete the 0 to type a new number
+            if (value === '') {
+                setAdjustedResources('');
+                return;
+            }
+            const numValue = parseInt(value, 10);
+            if (!isNaN(numValue)) {
+                setAdjustedResources(Math.max(0, numValue));
+            }
+        };
 
-             // Handle Save button click
-             const handleSave = () => {
-                 onSave(adjustedResources); // Pass the adjusted resources back
-             };
+        // Handle Save button click
+        const handleSave = () => {
+            // If empty when saving, default to 0
+            const finalValue = adjustedResources === '' ? 0 : parseInt(adjustedResources, 10);
+            onSave(finalValue);
+        };
 
-             return (
-                 <div className="modal-overlay building-adjust-modal"> {/* Reusing some styling classes */}
-                     <div className="modal-content">
-                         <h4>Adjust Automa Resources</h4>
-                         <p className="mb-4 text-gray-700">Set the current resource count for Automa.</p>
-                          <p className="mb-4 text-xs text-gray-600 italic">Scroll within this box if needed.</p> {/* Added scroll note */}
+        return (
+            <div className="modal-overlay building-adjust-modal">
+                <div className="modal-content">
+                    <h4>Adjust Automa Resources</h4>
+                    <p className="mb-4 text-gray-700">Set the current resource count for Automa.</p>
+                    <p className="mb-4 text-xs text-gray-600 italic">Scroll within this box if needed.</p>
 
-                         {/* Input field for resources */}
-                         <div className="building-input-group"> {/* Reusing input group styling */}
-                             <label htmlFor="adjust-resources">Resources:</label>
-                             <input
-                                 type="number"
-                                 id="adjust-resources"
-                                 value={adjustedResources}
-                                 onChange={handleInputChange}
-                                 min="0"
-                             />
-                         </div>
+                    <div className="building-input-group">
+                        <label htmlFor="adjust-resources">Resources:</label>
+                        <div className="flex items-center justify-center gap-3 mt-2">
+                            {/* Mobile-only Red Down Arrow */}
+                            <button 
+                                className="md:hidden w-12 h-12 flex items-center justify-center bg-red-500 text-white rounded-full text-2xl shadow-md active:bg-red-700"
+                                onClick={() => setAdjustedResources(prev => Math.max(0, (parseInt(prev, 10) || 0) - 1))}
+                            >
+                                ↓
+                            </button>
 
-                         {/* Buttons */}
-                         <div className="modal-buttons">
-                             <button className="cancel-button" onClick={onCancel}>Cancel</button>
-                             <button className="confirm-button" onClick={handleSave}>Confirm</button>
-                         </div>
-                     </div>
-                 </div>
-             );
-         };
+                            <input
+                                type="number"
+                                id="adjust-resources"
+                                className="w-20 text-center"
+                                value={adjustedResources}
+                                onChange={handleInputChange}
+                                inputMode="numeric"
+                            />
+
+                            {/* Mobile-only Green Up Arrow */}
+                            <button 
+                                className="md:hidden w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-full text-2xl shadow-md active:bg-green-700"
+                                onClick={() => setAdjustedResources(prev => (parseInt(prev, 10) || 0) + 1)}
+                            >
+                                ↑
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="modal-buttons">
+                        <button className="cancel-button" onClick={onCancel}>Cancel</button>
+                        <button className="confirm-button" onClick={handleSave}>Confirm</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
         // Position Adjustment Modal Component
         const PositionAdjustmentModal = ({ playerPositions, automaPositions, onSave, onCancel }) => {
